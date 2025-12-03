@@ -3,16 +3,14 @@ import os
 
 from PIL import Image
 from django.contrib.auth import get_user_model
-from django.db.models.expressions import result
 from django.test import TestCase
 from django.urls import reverse
 
 from rest_framework.test import APIClient
 from rest_framework import status
-from rest_framework.views import APIView
 
 from cinema.models import Movie, MovieSession, CinemaHall, Genre, Actor
-from cinema.serializers import MovieSerializer, MovieListSerializer, MovieDetailSerializer
+from cinema.serializers import MovieListSerializer, MovieDetailSerializer
 
 MOVIE_URL = reverse("cinema:movie-list")
 MOVIE_SESSION_URL = reverse("cinema:moviesession-list")
@@ -198,3 +196,35 @@ class AuthorizedMovieTestAPIView(TestCase):
         serializer = MovieDetailSerializer(movie)
         self.assertEqual(res.data, serializer.data)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_movie_filter_title(self):
+        """Test that movie filter the title"""
+        movie1 = sample_movie(title="Interception")
+        movie2 = sample_movie(title="Avengers")
+        res = self.client.get(MOVIE_URL, {"title": movie1.title})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], movie1.id)
+
+    def test_movie_filter_genres(self):
+        """Test that movie filter the genres"""
+        movie = sample_movie()
+        genre1 = sample_genre(name="Science Fiction")
+        genre2 = sample_genre(name="Cyberpunk")
+        movie.genres.set([genre1, genre2])
+
+        res = self.client.get(MOVIE_URL, {"genres": str(genre1.id)})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], movie.id)
+
+    def test_movie_filter_actors(self):
+        """Test that movie filter the actors"""
+        movie = sample_movie()
+        actor1 = sample_actor(first_name="Will", last_name="Smith")
+        actor2 = sample_actor(first_name="Chack", last_name="Noris")
+        movie.actors.set([actor1, actor2])
+        res = self.client.get(MOVIE_URL, {"actors": str(actor1.id)})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], movie.id)
