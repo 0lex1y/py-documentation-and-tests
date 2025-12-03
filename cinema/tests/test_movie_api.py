@@ -228,3 +228,8 @@ class AuthorizedMovieTestAPIView(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]["id"], movie.id)
+
+    def test_create_movie_user(self):
+        """Test that movie creation does not works for regular users"""
+        res = self.client.post(MOVIE_URL, data={"title": "Interception"})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
