@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from django.db.models import F, Count
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import action
@@ -98,6 +100,36 @@ class MovieViewSet(
 
         return queryset.distinct()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "title",
+                type=str,
+                description="The title of the movie",
+                required=False,
+            ),
+            OpenApiParameter(
+                "genres",
+                type=OpenApiTypes.STR,
+                description="Comma-separated list of genre IDs (e.g., 1,2,5)",
+                required=False,
+                style="form",
+                explode=False,
+            ),
+            OpenApiParameter(
+                "actors",
+                type=OpenApiTypes.STR,
+                description="Comma-separated list of actor IDs (e.g., 1,2,5)",
+                required=False,
+                style="form",
+                explode=False,
+            )
+
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_serializer_class(self):
         if self.action == "list":
             return MovieListSerializer
@@ -158,6 +190,27 @@ class MovieSessionViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "date",
+                type=OpenApiTypes.DATE,
+                description="Filter showtime by date (YYYY-MM-DD)",
+                required=False,
+            ),
+            OpenApiParameter(
+                "movie",
+                type=OpenApiTypes.INT,
+                description="Filter showtime by movie ID",
+                required=False,
+                style="form",
+                explode=False,
+            )
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_serializer_class(self):
         if self.action == "list":
             return MovieSessionListSerializer
@@ -192,7 +245,6 @@ class OrderViewSet(
     def get_serializer_class(self):
         if self.action == "list":
             return OrderListSerializer
-
         return OrderSerializer
 
     def perform_create(self, serializer):

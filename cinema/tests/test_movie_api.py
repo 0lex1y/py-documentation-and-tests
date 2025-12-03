@@ -3,13 +3,16 @@ import os
 
 from PIL import Image
 from django.contrib.auth import get_user_model
+from django.db.models.expressions import result
 from django.test import TestCase
 from django.urls import reverse
 
 from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.views import APIView
 
 from cinema.models import Movie, MovieSession, CinemaHall, Genre, Actor
+from cinema.serializers import MovieSerializer, MovieListSerializer, MovieDetailSerializer
 
 MOVIE_URL = reverse("cinema:movie-list")
 MOVIE_SESSION_URL = reverse("cinema:moviesession-list")
@@ -157,3 +160,41 @@ class MovieImageUploadTests(TestCase):
         res = self.client.get(MOVIE_SESSION_URL)
 
         self.assertIn("movie_image", res.data[0].keys())
+
+class UnauthorizedMovieTestAPIView(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_auth_required(self):
+        """Test that authentication is required"""
+        result = self.client.get(MOVIE_URL)
+        self.assertEqual(result.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class AuthorizedMovieTestAPIView(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            email="admin@test.com",
+            password="password",
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_movie_list(self):
+        """Test that movies are listed"""
+        sample_movie()
+        res = self.client.get(MOVIE_URL)
+        movies = Movie.objects.all()
+        serializer = MovieListSerializer(movies, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
+
+    def test_movie_detail(self):
+        """Test that movie details are returned"""
+        movie = sample_movie()
+        movies = Movie.objects.all()
+        url = detail_url(movies[0].id)
+        res = self.client.get(url)
+        serializer = MovieDetailSerializer(movie)
+        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
